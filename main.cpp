@@ -2,9 +2,23 @@
 #include <SFML/Window.hpp>
 #include <iostream>
 #include <cmath>
+#include <vector>
+#include <ctime>
+#include <cstdlib>
 #include <algorithm>
 
+float f_rand(float min, float max) {
+    return min + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX) / (max - min));
+}
+
+struct Asteroid {
+    sf::CircleShape asteroid;
+    sf::Vector2f velocity;
+};
+
 int main(){
+    srand(std::time(nullptr));
+
     unsigned int window_width = 800;
     unsigned int window_heigth = 800;
     // Deklaracja klasy okno
@@ -23,12 +37,28 @@ int main(){
     float rotation_speed = 0.2f; // prędkość silnika
     float friction = 0.998f; // opór "powietrza"
     float max_speed = 2.f;
-    //---------
-    sf::CircleShape player2(5.f);
-    player2.setFillColor(sf::Color(255, 0, 0));
-    player2.setPosition(window.getSize().x / 2, window.getSize().y / 2);
-    //---------
 
+    // Szablony asteroid
+    sf::CircleShape Big(1.8f * player_size); // Big asteroid
+    Big.setFillColor(sf::Color::White);
+    Big.setPosition(window.getSize().x / 2.f, window.getSize().y / 2.f);
+    rc = Big.getGlobalBounds();
+    Big.setOrigin(rc.width / 2.f, rc.height / 2.f);
+
+    sf::CircleShape Med(0.9f * player_size); // Medium asteroid
+    Med.setFillColor(sf::Color::White);
+    Med.setPosition(window.getSize().x / 2.f, window.getSize().y / 2.f);
+    rc = Med.getGlobalBounds();
+    Med.setOrigin(rc.width / 2.f, rc.height / 2.f);
+
+    sf::CircleShape Small(2 * player_size); // Small asteroid
+    Small.setFillColor(sf::Color::White);
+    Small.setPosition(window.getSize().x / 2.f, window.getSize().y / 2.f);
+    rc = Small.getGlobalBounds();
+    Small.setOrigin(rc.width / 2.f, rc.height / 2.f);
+
+    // Deklaracja wektora asteroid
+    std::vector <Asteroid> asteroids;
 
     // Glowna petla
     while(window.isOpen()) {
@@ -66,6 +96,15 @@ int main(){
         velocity += acceleration;
         velocity *= friction;
 
+        // Asteroidy
+        if (asteroids.empty()) {
+            for (int i = 0; i < 5; i++) {
+                asteroids.push_back({Big, {f_rand(0.5f, 2.f), f_rand(0.5f, 2.f)}});
+                asteroids[asteroids.size() - 1].asteroid.setPosition(static_cast<float>(rand() % (window_width + 1)),
+                                                                     static_cast<float>(rand() % (window_heigth + 1)));
+            }
+        }
+
         // Czyszczenie okna
         window.clear(sf::Color::Black);
         // draw everything here...
@@ -85,11 +124,10 @@ int main(){
             player.setPosition(player.getPosition().x, player.getPosition().y + window.getSize().y + (2 * player_size));
         }
 
-        std::cout << player.getPosition().x << " " << player.getPosition().y << std::endl;
         window.draw(player);
-        //------------------
-        window.draw(player2);
-        //------------------
+        for (int i = 0; i < asteroids.size(); i++) {
+            window.draw(asteroids[i].asteroid);
+        }
         // Odswiezenie obrazu
         window.display();
     }
