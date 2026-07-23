@@ -7,8 +7,23 @@
 #include <cstdlib>
 #include <algorithm>
 
-float f_rand(float min, float max) {
+float f_rand_positive(const float min, const float max) {
     return min + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX) / (max - min));
+}
+
+float f_rand(const float min, const float max) {
+    if (min <= 0.f && max >= 0.f) {
+        float r1 = f_rand_positive(0.f, max);
+        float r2 = -f_rand_positive(0.f, -min);
+        if (rand() % 2 == 1) {
+            return r1;
+        }
+        return r2;
+    }
+    else if (min <= 0.f && max <= 0.f) {
+        return -f_rand_positive(-max, -min);
+    }
+    else return f_rand_positive(min, max);
 }
 
 struct Asteroid {
@@ -20,8 +35,8 @@ struct Asteroid {
 int main(){
     srand(std::time(nullptr));
 
-    unsigned int window_width = 800;
-    unsigned int window_height = 800;
+    unsigned int window_width = 700;
+    unsigned int window_height = 700;
     // Window declaration
     sf::RenderWindow window(sf::VideoMode({window_width, window_height}), "First window", sf::Style::Default);
     window.setFramerateLimit(300);
@@ -103,7 +118,7 @@ int main(){
         if (asteroids.empty()) {
             for (int i = 0; i < 5; i++) {
                 asteroids.push_back(
-                {Big, {f_rand(0.2f, 0.5f), f_rand(0.2f, 0.5f)},
+                {Big, {f_rand(-0.4f, 0.4f), f_rand(-0.4f, 0.4f)},
                     1.8f * player_size});
                 asteroids[asteroids.size() - 1].asteroid.setPosition(static_cast<float>(rand() % (window_width + 1)),
                                                                      static_cast<float>(rand() % (window_height + 1)));
@@ -157,8 +172,8 @@ int main(){
         }
 
         window.draw(player);
-        for (int i = 0; i < asteroids.size(); i++) {
-            window.draw(asteroids[i].asteroid);
+        for (const auto& i : asteroids) {
+            window.draw(i.asteroid);
         }
         // Refreshing the window
         window.display();
