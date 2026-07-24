@@ -34,6 +34,11 @@ struct Asteroid {
 
 int main(){
     srand(std::time(nullptr));
+    // ---Game variables---
+    int hp = 3;
+    bool paused = false;
+    bool collisions = false;
+    int safety_timer = 900;
 
     unsigned int window_width = 700;
     unsigned int window_height = 700;
@@ -128,8 +133,19 @@ int main(){
         // ---Clearing window---
         window.clear(sf::Color::Black);
 
-        // ---Drawing---
+        // ---Drawing and moving---
         player.move(velocity); // moving player
+
+        // Checking safety of the player
+        if (safety_timer != 0) {
+            safety_timer--;
+            collisions = false;
+            player.setFillColor(sf::Color(0, 0, 255));
+        }
+        else {
+            collisions = true;
+            player.setFillColor(sf::Color(0, 255, 0));
+        }
 
         // Reaching the map boundaries
         if (player.getPosition().x > window.getSize().x + player_size) {
@@ -168,6 +184,22 @@ int main(){
                 asteroids[i].asteroid.setPosition(asteroids[i].asteroid.getPosition().x,
                                                   asteroids[i].asteroid.getPosition().y + window.getSize().y + (
                                                       2 * asteroids[i].size));
+            }
+            // Collision with player
+            if (collisions) {
+                float d = std::sqrt(
+                    (player.getPosition().x - asteroids[i].asteroid.getPosition().x) * (
+                        player.getPosition().x - asteroids[i].asteroid.getPosition().x) + (
+                        player.getPosition().y - asteroids[i].asteroid.getPosition().y) * (
+                        player.getPosition().y - asteroids[i].asteroid.getPosition().y));
+                if (d <= player_size + asteroids[i].size) {
+                    hp--;
+                    player.setPosition(window.getSize().x / 2.f, window.getSize().y / 2.f);
+                    player.setRotation(0.f);
+                    velocity = {0.f, 0.f};
+                    collisions = false;
+                    safety_timer = 900;
+                }
             }
         }
 
