@@ -32,6 +32,12 @@ struct Asteroid {
     float size;
 };
 
+struct Projectile {
+    sf::CircleShape bullet;
+    sf::Vector2f velocity;
+    int range = 400;
+};
+
 int main(){
     srand(std::time(nullptr));
     // ---Game variables---
@@ -39,6 +45,9 @@ int main(){
     bool paused = false;
     bool collisions = false;
     int safety_timer = 900;
+    float bullet_size = 2.f;
+    int shot_cooldown = 120;
+    float bullet_speed = 1.f;
 
     unsigned int window_width = 700;
     unsigned int window_height = 700;
@@ -82,6 +91,15 @@ int main(){
     // Vector of asteroids
     std::vector <Asteroid> asteroids;
 
+    // Bullet template
+    sf::CircleShape Bullet(bullet_size);
+    Bullet.setFillColor(sf::Color::Red);
+    rc = Bullet.getGlobalBounds();
+    Bullet.setOrigin(rc.width / 2.f, rc.height / 2.f);
+
+    // Vector of projectiles
+    std::vector <Projectile> projectiles;
+
     // ---GAME LOOP---
     while(window.isOpen()) {
         sf::Event event;
@@ -119,6 +137,18 @@ int main(){
         velocity += acceleration;
         velocity *= friction;
 
+        // Shooting
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space) && shot_cooldown == 0) {
+            float radians = player.getRotation() * 3.14159265359f / 180.f;
+            float sx = std::cos(radians) * bullet_speed;
+            float sy = std::sin(radians) * bullet_speed;
+            projectiles.push_back({Bullet, {sx, sy}});
+            projectiles[projectiles.size() - 1].bullet.setPosition(player.getPosition());
+            projectiles[projectiles.size() - 1].bullet.move(std::cos(radians) * player_size,
+                std::sin(radians) * player_size);
+            shot_cooldown = 120;
+        }
+
         // Adding new asteroids
         if (asteroids.empty()) {
             for (int i = 0; i < 5; i++) {
@@ -133,7 +163,7 @@ int main(){
         // ---Clearing window---
         window.clear(sf::Color::Black);
 
-        // ---Drawing and moving---
+        // ---Moving sprites---
         player.move(velocity); // moving player
 
         // Checking safety of the player
@@ -145,6 +175,11 @@ int main(){
         else {
             collisions = true;
             player.setFillColor(sf::Color(0, 255, 0));
+        }
+
+        // Shot cooldown
+        if (shot_cooldown != 0) {
+            shot_cooldown--;
         }
 
         // Reaching the map boundaries
@@ -203,9 +238,46 @@ int main(){
             }
         }
 
+        // Moving projectiles
+        for (int i = 0; i < projectiles.size(); i++) {
+            if (projectiles[i].range != 0) {
+                projectiles[i].bullet.move(projectiles[i].velocity);
+                projectiles[i].range--;
+
+                // Reaching the map boundaries
+                if (projectiles[i].bullet.getPosition().x > window.getSize().x + bullet_size) {
+                    projectiles[i].bullet.setPosition(
+                        projectiles[i].bullet.getPosition().x - window.getSize().x - (2 * bullet_size),
+                        projectiles[i].bullet.getPosition().y);
+                }
+                if (projectiles[i].bullet.getPosition().x < -bullet_size) {
+                    projectiles[i].bullet.setPosition(
+                        projectiles[i].bullet.getPosition().x + window.getSize().x + (2 * bullet_size),
+                        projectiles[i].bullet.getPosition().y);
+                }
+                if (projectiles[i].bullet.getPosition().y > window.getSize().y + bullet_size) {
+                    projectiles[i].bullet.setPosition(projectiles[i].bullet.getPosition().x,
+                                                      projectiles[i].bullet.getPosition().y - window.getSize().y - (
+                                                          2 * bullet_size));
+                }
+                if (projectiles[i].bullet.getPosition().y < -bullet_size) {
+                    projectiles[i].bullet.setPosition(projectiles[i].bullet.getPosition().x,
+                                                      projectiles[i].bullet.getPosition().y + window.getSize().y + (
+                                                          2 * bullet_size));
+                }
+            }
+            else {
+                projectiles.erase(projectiles.begin() + i);
+            }
+        }
+
+        //---Drawing---
         window.draw(player);
         for (const auto& i : asteroids) {
             window.draw(i.asteroid);
+        }
+        for (const auto& i : projectiles) {
+            window.draw(i.bullet);
         }
         // Refreshing the window
         window.display();
