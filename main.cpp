@@ -26,10 +26,13 @@ float f_rand(const float min, const float max) {
     else return f_rand_positive(min, max);
 }
 
+enum asteroid_type {BIG, MEDIUM, SMALL};
+
 struct Asteroid {
     sf::CircleShape asteroid;
     sf::Vector2f velocity;
     float size;
+    asteroid_type type = BIG;
 };
 
 struct Projectile {
@@ -48,6 +51,7 @@ int main(){
     float bullet_size = 2.f;
     int shot_cooldown = 120;
     float bullet_speed = 1.f;
+    int score = 0;
 
     unsigned int window_width = 700;
     unsigned int window_height = 700;
@@ -82,7 +86,7 @@ int main(){
     rc = Med.getGlobalBounds();
     Med.setOrigin(rc.width / 2.f, rc.height / 2.f);
 
-    sf::CircleShape Small(2 * player_size); // Small asteroid
+    sf::CircleShape Small(0.45f * player_size); // Small asteroid
     Small.setFillColor(sf::Color::White);
     Small.setPosition(window.getSize().x / 2.f, window.getSize().y / 2.f);
     rc = Small.getGlobalBounds();
@@ -196,48 +200,6 @@ int main(){
             player.setPosition(player.getPosition().x, player.getPosition().y + window.getSize().y + (2 * player_size));
         }
 
-        // Moving asteroids
-        for (int i = 0; i < asteroids.size(); i++) {
-            asteroids[i].asteroid.move(asteroids[i].velocity);
-            // Reaching the map boundaries
-            if (asteroids[i].asteroid.getPosition().x > window.getSize().x + asteroids[i].size) {
-                asteroids[i].asteroid.setPosition(
-                    asteroids[i].asteroid.getPosition().x - window.getSize().x - (2 * asteroids[i].size),
-                    asteroids[i].asteroid.getPosition().y);
-            }
-            if (asteroids[i].asteroid.getPosition().x < -asteroids[i].size) {
-                asteroids[i].asteroid.setPosition(
-                    asteroids[i].asteroid.getPosition().x + window.getSize().x + (2 * asteroids[i].size),
-                    asteroids[i].asteroid.getPosition().y);
-            }
-            if (asteroids[i].asteroid.getPosition().y > window.getSize().y + asteroids[i].size) {
-                asteroids[i].asteroid.setPosition(asteroids[i].asteroid.getPosition().x,
-                                                  asteroids[i].asteroid.getPosition().y - window.getSize().y - (
-                                                      2 * asteroids[i].size));
-            }
-            if (asteroids[i].asteroid.getPosition().y < -asteroids[i].size) {
-                asteroids[i].asteroid.setPosition(asteroids[i].asteroid.getPosition().x,
-                                                  asteroids[i].asteroid.getPosition().y + window.getSize().y + (
-                                                      2 * asteroids[i].size));
-            }
-            // Collision with player
-            if (collisions) {
-                float d = std::sqrt(
-                    (player.getPosition().x - asteroids[i].asteroid.getPosition().x) * (
-                        player.getPosition().x - asteroids[i].asteroid.getPosition().x) + (
-                        player.getPosition().y - asteroids[i].asteroid.getPosition().y) * (
-                        player.getPosition().y - asteroids[i].asteroid.getPosition().y));
-                if (d <= player_size + asteroids[i].size) {
-                    hp--;
-                    player.setPosition(window.getSize().x / 2.f, window.getSize().y / 2.f);
-                    player.setRotation(0.f);
-                    velocity = {0.f, 0.f};
-                    collisions = false;
-                    safety_timer = 900;
-                }
-            }
-        }
-
         // Moving projectiles
         for (int i = 0; i < projectiles.size(); i++) {
             if (projectiles[i].range != 0) {
@@ -268,6 +230,97 @@ int main(){
             }
             else {
                 projectiles.erase(projectiles.begin() + i);
+            }
+        }
+
+        // Moving asteroids
+        for (int i = 0; i < asteroids.size(); i++) {
+            asteroids[i].asteroid.move(asteroids[i].velocity);
+            // Reaching the map boundaries
+            if (asteroids[i].asteroid.getPosition().x > window.getSize().x + asteroids[i].size) {
+                asteroids[i].asteroid.setPosition(
+                    asteroids[i].asteroid.getPosition().x - window.getSize().x - (2 * asteroids[i].size),
+                    asteroids[i].asteroid.getPosition().y);
+            }
+            if (asteroids[i].asteroid.getPosition().x < -asteroids[i].size) {
+                asteroids[i].asteroid.setPosition(
+                    asteroids[i].asteroid.getPosition().x + window.getSize().x + (2 * asteroids[i].size),
+                    asteroids[i].asteroid.getPosition().y);
+            }
+            if (asteroids[i].asteroid.getPosition().y > window.getSize().y + asteroids[i].size) {
+                asteroids[i].asteroid.setPosition(asteroids[i].asteroid.getPosition().x,
+                                                  asteroids[i].asteroid.getPosition().y - window.getSize().y - (
+                                                      2 * asteroids[i].size));
+            }
+            if (asteroids[i].asteroid.getPosition().y < -asteroids[i].size) {
+                asteroids[i].asteroid.setPosition(asteroids[i].asteroid.getPosition().x,
+                                                  asteroids[i].asteroid.getPosition().y + window.getSize().y + (
+                                                      2 * asteroids[i].size));
+            }
+
+            // Collision with projectiles
+            for (int j = 0; j < projectiles.size(); j++) {
+                float d_projectile = std::sqrt((projectiles[j].bullet.getPosition().x - asteroids[i].asteroid.getPosition().x) * (
+                        projectiles[j].bullet.getPosition().x - asteroids[i].asteroid.getPosition().x) + (
+                        projectiles[j].bullet.getPosition().y - asteroids[i].asteroid.getPosition().y) * (
+                        projectiles[j].bullet.getPosition().y - asteroids[i].asteroid.getPosition().y));
+                if (d_projectile <= bullet_size + asteroids[i].size) {
+                    projectiles.erase(projectiles.begin() + j);
+                    score += 20;
+                    sf::Vector2f old_position = asteroids[i].asteroid.getPosition();
+                    switch (asteroids[i].type) {
+                        case 0:
+                            asteroids.erase(asteroids.begin() + i);
+                            asteroids.push_back({Med, {f_rand(-0.4f, 0.4f), f_rand(-0.4f, 0.4f)},
+                                0.9f * player_size});
+                            asteroids[asteroids.size() - 1].type = MEDIUM;
+                            asteroids[asteroids.size() - 1].asteroid.setRotation(f_rand(0.f, 360.f));
+                            asteroids[asteroids.size() - 1].asteroid.setPosition(old_position);
+                            asteroids.push_back({Med, {f_rand(-0.4f, 0.4f), f_rand(-0.4f, 0.4f)},
+                                0.9f * player_size});
+                            asteroids[asteroids.size() - 1].type = MEDIUM;
+                            asteroids[asteroids.size() - 1].asteroid.setRotation(f_rand(0.f, 360.f));
+                            asteroids[asteroids.size() - 1].asteroid.setPosition(old_position);
+                            break;
+
+                        case 1:
+                            asteroids.erase(asteroids.begin() + i);
+                            asteroids.push_back({Small, {f_rand(-0.4f, 0.4f), f_rand(-0.4f, 0.4f)},
+                                0.45f * player_size});
+                            asteroids[asteroids.size() - 1].type = SMALL;
+                            asteroids[asteroids.size() - 1].asteroid.setRotation(f_rand(0.f, 360.f));
+                            asteroids[asteroids.size() - 1].asteroid.setPosition(old_position);
+                            asteroids.push_back({Small, {f_rand(-0.4f, 0.4f), f_rand(-0.4f, 0.4f)},
+                                0.45f * player_size});
+                            asteroids[asteroids.size() - 1].type = SMALL;
+                            asteroids[asteroids.size() - 1].asteroid.setRotation(f_rand(0.f, 360.f));
+                            asteroids[asteroids.size() - 1].asteroid.setPosition(old_position);
+
+                        case 2:
+                            asteroids.erase(asteroids.begin() + i);
+                            break;
+
+                        default:
+                            break;
+                    }
+                }
+            }
+
+            // Collision with player
+            if (collisions) {
+                float d_player = std::sqrt(
+                    (player.getPosition().x - asteroids[i].asteroid.getPosition().x) * (
+                        player.getPosition().x - asteroids[i].asteroid.getPosition().x) + (
+                        player.getPosition().y - asteroids[i].asteroid.getPosition().y) * (
+                        player.getPosition().y - asteroids[i].asteroid.getPosition().y));
+                if (d_player <= player_size + asteroids[i].size) {
+                    hp--;
+                    player.setPosition(window.getSize().x / 2.f, window.getSize().y / 2.f);
+                    player.setRotation(0.f);
+                    velocity = {0.f, 0.f};
+                    collisions = false;
+                    safety_timer = 900;
+                }
             }
         }
 
