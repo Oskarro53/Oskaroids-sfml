@@ -59,6 +59,13 @@ int main(){
     sf::RenderWindow window(sf::VideoMode({window_width, window_height}), "First window", sf::Style::Default);
     window.setFramerateLimit(300);
 
+    // Loading font
+    sf::Font font;
+    if (!font.loadFromFile("BlackOpsOne-Regular.ttf")) {
+        std::cout << "Font loading error";
+        return 0;
+    }
+
     // Player initialisation
     float player_size = 20.f; // 40x40 square
     sf::CircleShape player(player_size);
@@ -114,226 +121,256 @@ int main(){
                 case sf::Event::Closed:
                     window.close();
                     break;
-                    // Others...
+
+                case sf::Event::KeyPressed:
+                    if (event.key.code == sf::Keyboard::Escape) {
+                        paused = !paused;
+                    }
+                    break;
 
                 default:
                     break;
             }
         }
-
-        // ---Pressing keys---
-        // Rotating the player
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left) && !sf::Keyboard::isKeyPressed(sf::Keyboard::Right)) {
-            player.rotate(-rotation_speed); // rotation left
-        }
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right) && !sf::Keyboard::isKeyPressed(sf::Keyboard::Left)) {
-            player.rotate(rotation_speed); // rotation right
-        }
-
-        sf::Vector2f acceleration(0.f, 0.f); // vector of acceleration
-        // Using engine
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up)) {
-            float radians = player.getRotation() * 3.14159265359f / 180.f;
-            acceleration.x = std::cos(radians) * thrust;
-            acceleration.y = std::sin(radians) * thrust;
-        }
-        // Velocity
-        velocity += acceleration;
-        velocity *= friction;
-
-        // Shooting
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space) && shot_cooldown == 0) {
-            float radians = player.getRotation() * 3.14159265359f / 180.f;
-            float sx = std::cos(radians) * bullet_speed;
-            float sy = std::sin(radians) * bullet_speed;
-            projectiles.push_back({Bullet, {sx, sy}});
-            projectiles[projectiles.size() - 1].bullet.setPosition(player.getPosition());
-            projectiles[projectiles.size() - 1].bullet.move(std::cos(radians) * player_size,
-                std::sin(radians) * player_size);
-            shot_cooldown = 120;
-        }
-
-        // Adding new asteroids
-        if (asteroids.empty()) {
-            for (int i = 0; i < 5; i++) {
-                asteroids.push_back(
-                {Big, {f_rand(-0.4f, 0.4f), f_rand(-0.4f, 0.4f)},
-                    1.8f * player_size});
-                asteroids[asteroids.size() - 1].asteroid.setPosition(static_cast<float>(rand() % (window_width + 1)),
-                                                                     static_cast<float>(rand() % (window_height + 1)));
+        // ---GAME---
+        if (!paused) {
+            // ---Pressing keys---
+            // Rotating the player
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left) && !sf::Keyboard::isKeyPressed(sf::Keyboard::Right)) {
+                player.rotate(-rotation_speed); // rotation left
             }
-        }
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right) && !sf::Keyboard::isKeyPressed(sf::Keyboard::Left)) {
+                player.rotate(rotation_speed); // rotation right
+            }
 
-        // ---Clearing window---
-        window.clear(sf::Color::Black);
+            sf::Vector2f acceleration(0.f, 0.f); // vector of acceleration
+            // Using engine
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Up)) {
+                float radians = player.getRotation() * 3.14159265359f / 180.f;
+                acceleration.x = std::cos(radians) * thrust;
+                acceleration.y = std::sin(radians) * thrust;
+            }
+            // Velocity
+            velocity += acceleration;
+            velocity *= friction;
 
-        // ---Moving sprites---
-        player.move(velocity); // moving player
+            // Shooting
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space) && shot_cooldown == 0) {
+                float radians = player.getRotation() * 3.14159265359f / 180.f;
+                float sx = std::cos(radians) * bullet_speed;
+                float sy = std::sin(radians) * bullet_speed;
+                projectiles.push_back({Bullet, {sx, sy}});
+                projectiles[projectiles.size() - 1].bullet.setPosition(player.getPosition());
+                projectiles[projectiles.size() - 1].bullet.move(std::cos(radians) * player_size,
+                    std::sin(radians) * player_size);
+                shot_cooldown = 120;
+            }
 
-        // Checking safety of the player
-        if (safety_timer != 0) {
-            safety_timer--;
-            collisions = false;
-            player.setFillColor(sf::Color(0, 0, 255));
-        }
-        else {
-            collisions = true;
-            player.setFillColor(sf::Color(0, 255, 0));
-        }
-
-        // Shot cooldown
-        if (shot_cooldown != 0) {
-            shot_cooldown--;
-        }
-
-        // Reaching the map boundaries
-        if (player.getPosition().x > window.getSize().x + player_size) {
-            player.setPosition(player.getPosition().x - window.getSize().x - (2 * player_size), player.getPosition().y);
-        }
-        if (player.getPosition().x < -player_size) {
-            player.setPosition(player.getPosition().x + window.getSize().x + (2 * player_size), player.getPosition().y);
-        }
-        if (player.getPosition().y > window.getSize().y + player_size) {
-            player.setPosition(player.getPosition().x, player.getPosition().y - window.getSize().y - (2 * player_size));
-        }
-        if (player.getPosition().y < -player_size) {
-            player.setPosition(player.getPosition().x, player.getPosition().y + window.getSize().y + (2 * player_size));
-        }
-
-        // Moving projectiles
-        for (int i = 0; i < projectiles.size(); i++) {
-            if (projectiles[i].range != 0) {
-                projectiles[i].bullet.move(projectiles[i].velocity);
-                projectiles[i].range--;
-
-                // Reaching the map boundaries
-                if (projectiles[i].bullet.getPosition().x > window.getSize().x + bullet_size) {
-                    projectiles[i].bullet.setPosition(
-                        projectiles[i].bullet.getPosition().x - window.getSize().x - (2 * bullet_size),
-                        projectiles[i].bullet.getPosition().y);
+            // Adding new asteroids
+            if (asteroids.empty()) {
+                for (int i = 0; i < 5; i++) {
+                    asteroids.push_back(
+                    {Big, {f_rand(-0.4f, 0.4f), f_rand(-0.4f, 0.4f)},
+                        1.8f * player_size});
+                    asteroids[asteroids.size() - 1].asteroid.setPosition(static_cast<float>(rand() % (window_width + 1)),
+                                                                         static_cast<float>(rand() % (window_height + 1)));
                 }
-                if (projectiles[i].bullet.getPosition().x < -bullet_size) {
-                    projectiles[i].bullet.setPosition(
-                        projectiles[i].bullet.getPosition().x + window.getSize().x + (2 * bullet_size),
-                        projectiles[i].bullet.getPosition().y);
-                }
-                if (projectiles[i].bullet.getPosition().y > window.getSize().y + bullet_size) {
-                    projectiles[i].bullet.setPosition(projectiles[i].bullet.getPosition().x,
-                                                      projectiles[i].bullet.getPosition().y - window.getSize().y - (
-                                                          2 * bullet_size));
-                }
-                if (projectiles[i].bullet.getPosition().y < -bullet_size) {
-                    projectiles[i].bullet.setPosition(projectiles[i].bullet.getPosition().x,
-                                                      projectiles[i].bullet.getPosition().y + window.getSize().y + (
-                                                          2 * bullet_size));
-                }
+            }
+
+            // ---Clearing window---
+            window.clear(sf::Color::Black);
+
+            // ---Moving sprites---
+            player.move(velocity); // moving player
+
+            // Checking safety of the player
+            if (safety_timer != 0) {
+                safety_timer--;
+                collisions = false;
+                player.setFillColor(sf::Color(0, 0, 255));
             }
             else {
-                projectiles.erase(projectiles.begin() + i);
+                collisions = true;
+                player.setFillColor(sf::Color(0, 255, 0));
             }
-        }
 
-        // Moving asteroids
-        for (int i = 0; i < asteroids.size(); i++) {
-            asteroids[i].asteroid.move(asteroids[i].velocity);
+            // Shot cooldown
+            if (shot_cooldown != 0) {
+                shot_cooldown--;
+            }
+
             // Reaching the map boundaries
-            if (asteroids[i].asteroid.getPosition().x > window.getSize().x + asteroids[i].size) {
-                asteroids[i].asteroid.setPosition(
-                    asteroids[i].asteroid.getPosition().x - window.getSize().x - (2 * asteroids[i].size),
-                    asteroids[i].asteroid.getPosition().y);
+            if (player.getPosition().x > window.getSize().x + player_size) {
+                player.setPosition(player.getPosition().x - window.getSize().x - (2 * player_size), player.getPosition().y);
             }
-            if (asteroids[i].asteroid.getPosition().x < -asteroids[i].size) {
-                asteroids[i].asteroid.setPosition(
-                    asteroids[i].asteroid.getPosition().x + window.getSize().x + (2 * asteroids[i].size),
-                    asteroids[i].asteroid.getPosition().y);
+            if (player.getPosition().x < -player_size) {
+                player.setPosition(player.getPosition().x + window.getSize().x + (2 * player_size), player.getPosition().y);
             }
-            if (asteroids[i].asteroid.getPosition().y > window.getSize().y + asteroids[i].size) {
-                asteroids[i].asteroid.setPosition(asteroids[i].asteroid.getPosition().x,
-                                                  asteroids[i].asteroid.getPosition().y - window.getSize().y - (
-                                                      2 * asteroids[i].size));
+            if (player.getPosition().y > window.getSize().y + player_size) {
+                player.setPosition(player.getPosition().x, player.getPosition().y - window.getSize().y - (2 * player_size));
             }
-            if (asteroids[i].asteroid.getPosition().y < -asteroids[i].size) {
-                asteroids[i].asteroid.setPosition(asteroids[i].asteroid.getPosition().x,
-                                                  asteroids[i].asteroid.getPosition().y + window.getSize().y + (
-                                                      2 * asteroids[i].size));
+            if (player.getPosition().y < -player_size) {
+                player.setPosition(player.getPosition().x, player.getPosition().y + window.getSize().y + (2 * player_size));
             }
 
-            // Collision with projectiles
-            for (int j = 0; j < projectiles.size(); j++) {
-                float d_projectile = std::sqrt((projectiles[j].bullet.getPosition().x - asteroids[i].asteroid.getPosition().x) * (
-                        projectiles[j].bullet.getPosition().x - asteroids[i].asteroid.getPosition().x) + (
-                        projectiles[j].bullet.getPosition().y - asteroids[i].asteroid.getPosition().y) * (
-                        projectiles[j].bullet.getPosition().y - asteroids[i].asteroid.getPosition().y));
-                if (d_projectile <= bullet_size + asteroids[i].size) {
-                    projectiles.erase(projectiles.begin() + j);
-                    score += 20;
-                    sf::Vector2f old_position = asteroids[i].asteroid.getPosition();
-                    switch (asteroids[i].type) {
-                        case 0:
-                            asteroids.erase(asteroids.begin() + i);
-                            asteroids.push_back({Med, {f_rand(-0.4f, 0.4f), f_rand(-0.4f, 0.4f)},
-                                0.9f * player_size});
-                            asteroids[asteroids.size() - 1].type = MEDIUM;
-                            asteroids[asteroids.size() - 1].asteroid.setRotation(f_rand(0.f, 360.f));
-                            asteroids[asteroids.size() - 1].asteroid.setPosition(old_position);
-                            asteroids.push_back({Med, {f_rand(-0.4f, 0.4f), f_rand(-0.4f, 0.4f)},
-                                0.9f * player_size});
-                            asteroids[asteroids.size() - 1].type = MEDIUM;
-                            asteroids[asteroids.size() - 1].asteroid.setRotation(f_rand(0.f, 360.f));
-                            asteroids[asteroids.size() - 1].asteroid.setPosition(old_position);
-                            break;
+            // Moving projectiles
+            for (int i = 0; i < projectiles.size(); i++) {
+                if (projectiles[i].range != 0) {
+                    projectiles[i].bullet.move(projectiles[i].velocity);
+                    projectiles[i].range--;
 
-                        case 1:
-                            asteroids.erase(asteroids.begin() + i);
-                            asteroids.push_back({Small, {f_rand(-0.4f, 0.4f), f_rand(-0.4f, 0.4f)},
-                                0.45f * player_size});
-                            asteroids[asteroids.size() - 1].type = SMALL;
-                            asteroids[asteroids.size() - 1].asteroid.setRotation(f_rand(0.f, 360.f));
-                            asteroids[asteroids.size() - 1].asteroid.setPosition(old_position);
-                            asteroids.push_back({Small, {f_rand(-0.4f, 0.4f), f_rand(-0.4f, 0.4f)},
-                                0.45f * player_size});
-                            asteroids[asteroids.size() - 1].type = SMALL;
-                            asteroids[asteroids.size() - 1].asteroid.setRotation(f_rand(0.f, 360.f));
-                            asteroids[asteroids.size() - 1].asteroid.setPosition(old_position);
+                    // Reaching the map boundaries
+                    if (projectiles[i].bullet.getPosition().x > window.getSize().x + bullet_size) {
+                        projectiles[i].bullet.setPosition(
+                            projectiles[i].bullet.getPosition().x - window.getSize().x - (2 * bullet_size),
+                            projectiles[i].bullet.getPosition().y);
+                    }
+                    if (projectiles[i].bullet.getPosition().x < -bullet_size) {
+                        projectiles[i].bullet.setPosition(
+                            projectiles[i].bullet.getPosition().x + window.getSize().x + (2 * bullet_size),
+                            projectiles[i].bullet.getPosition().y);
+                    }
+                    if (projectiles[i].bullet.getPosition().y > window.getSize().y + bullet_size) {
+                        projectiles[i].bullet.setPosition(projectiles[i].bullet.getPosition().x,
+                                                          projectiles[i].bullet.getPosition().y - window.getSize().y - (
+                                                              2 * bullet_size));
+                    }
+                    if (projectiles[i].bullet.getPosition().y < -bullet_size) {
+                        projectiles[i].bullet.setPosition(projectiles[i].bullet.getPosition().x,
+                                                          projectiles[i].bullet.getPosition().y + window.getSize().y + (
+                                                              2 * bullet_size));
+                    }
+                }
+                else {
+                    projectiles.erase(projectiles.begin() + i);
+                }
+            }
 
-                        case 2:
-                            asteroids.erase(asteroids.begin() + i);
-                            break;
+            // Moving asteroids
+            for (int i = 0; i < asteroids.size(); i++) {
+                asteroids[i].asteroid.move(asteroids[i].velocity);
+                // Reaching the map boundaries
+                if (asteroids[i].asteroid.getPosition().x > window.getSize().x + asteroids[i].size) {
+                    asteroids[i].asteroid.setPosition(
+                        asteroids[i].asteroid.getPosition().x - window.getSize().x - (2 * asteroids[i].size),
+                        asteroids[i].asteroid.getPosition().y);
+                }
+                if (asteroids[i].asteroid.getPosition().x < -asteroids[i].size) {
+                    asteroids[i].asteroid.setPosition(
+                        asteroids[i].asteroid.getPosition().x + window.getSize().x + (2 * asteroids[i].size),
+                        asteroids[i].asteroid.getPosition().y);
+                }
+                if (asteroids[i].asteroid.getPosition().y > window.getSize().y + asteroids[i].size) {
+                    asteroids[i].asteroid.setPosition(asteroids[i].asteroid.getPosition().x,
+                                                      asteroids[i].asteroid.getPosition().y - window.getSize().y - (
+                                                          2 * asteroids[i].size));
+                }
+                if (asteroids[i].asteroid.getPosition().y < -asteroids[i].size) {
+                    asteroids[i].asteroid.setPosition(asteroids[i].asteroid.getPosition().x,
+                                                      asteroids[i].asteroid.getPosition().y + window.getSize().y + (
+                                                          2 * asteroids[i].size));
+                }
 
-                        default:
-                            break;
+                // Collision with projectiles
+                for (int j = 0; j < projectiles.size(); j++) {
+                    float d_projectile = std::sqrt((projectiles[j].bullet.getPosition().x - asteroids[i].asteroid.getPosition().x) * (
+                            projectiles[j].bullet.getPosition().x - asteroids[i].asteroid.getPosition().x) + (
+                            projectiles[j].bullet.getPosition().y - asteroids[i].asteroid.getPosition().y) * (
+                            projectiles[j].bullet.getPosition().y - asteroids[i].asteroid.getPosition().y));
+                    if (d_projectile <= bullet_size + asteroids[i].size) {
+                        projectiles.erase(projectiles.begin() + j);
+                        score += 20;
+                        sf::Vector2f old_position = asteroids[i].asteroid.getPosition();
+                        switch (asteroids[i].type) {
+                            case 0:
+                                asteroids.erase(asteroids.begin() + i);
+                                asteroids.push_back({Med, {f_rand(-0.4f, 0.4f), f_rand(-0.4f, 0.4f)},
+                                    0.9f * player_size});
+                                asteroids[asteroids.size() - 1].type = MEDIUM;
+                                asteroids[asteroids.size() - 1].asteroid.setRotation(f_rand(0.f, 360.f));
+                                asteroids[asteroids.size() - 1].asteroid.setPosition(old_position);
+                                asteroids.push_back({Med, {f_rand(-0.4f, 0.4f), f_rand(-0.4f, 0.4f)},
+                                    0.9f * player_size});
+                                asteroids[asteroids.size() - 1].type = MEDIUM;
+                                asteroids[asteroids.size() - 1].asteroid.setRotation(f_rand(0.f, 360.f));
+                                asteroids[asteroids.size() - 1].asteroid.setPosition(old_position);
+                                break;
+
+                            case 1:
+                                asteroids.erase(asteroids.begin() + i);
+                                asteroids.push_back({Small, {f_rand(-0.4f, 0.4f), f_rand(-0.4f, 0.4f)},
+                                    0.45f * player_size});
+                                asteroids[asteroids.size() - 1].type = SMALL;
+                                asteroids[asteroids.size() - 1].asteroid.setRotation(f_rand(0.f, 360.f));
+                                asteroids[asteroids.size() - 1].asteroid.setPosition(old_position);
+                                asteroids.push_back({Small, {f_rand(-0.4f, 0.4f), f_rand(-0.4f, 0.4f)},
+                                    0.45f * player_size});
+                                asteroids[asteroids.size() - 1].type = SMALL;
+                                asteroids[asteroids.size() - 1].asteroid.setRotation(f_rand(0.f, 360.f));
+                                asteroids[asteroids.size() - 1].asteroid.setPosition(old_position);
+
+                            case 2:
+                                asteroids.erase(asteroids.begin() + i);
+                                break;
+
+                            default:
+                                break;
+                        }
+                    }
+                }
+
+                // Collision with player
+                if (collisions) {
+                    float d_player = std::sqrt(
+                        (player.getPosition().x - asteroids[i].asteroid.getPosition().x) * (
+                            player.getPosition().x - asteroids[i].asteroid.getPosition().x) + (
+                            player.getPosition().y - asteroids[i].asteroid.getPosition().y) * (
+                            player.getPosition().y - asteroids[i].asteroid.getPosition().y));
+                    if (d_player <= player_size + asteroids[i].size) {
+                        hp--;
+                        player.setPosition(window.getSize().x / 2.f, window.getSize().y / 2.f);
+                        player.setRotation(0.f);
+                        velocity = {0.f, 0.f};
+                        collisions = false;
+                        safety_timer = 900;
                     }
                 }
             }
 
-            // Collision with player
-            if (collisions) {
-                float d_player = std::sqrt(
-                    (player.getPosition().x - asteroids[i].asteroid.getPosition().x) * (
-                        player.getPosition().x - asteroids[i].asteroid.getPosition().x) + (
-                        player.getPosition().y - asteroids[i].asteroid.getPosition().y) * (
-                        player.getPosition().y - asteroids[i].asteroid.getPosition().y));
-                if (d_player <= player_size + asteroids[i].size) {
-                    hp--;
-                    player.setPosition(window.getSize().x / 2.f, window.getSize().y / 2.f);
-                    player.setRotation(0.f);
-                    velocity = {0.f, 0.f};
-                    collisions = false;
-                    safety_timer = 900;
-                }
+            //---Drawing---
+            window.draw(player);
+            for (const auto& i : asteroids) {
+                window.draw(i.asteroid);
             }
+            for (const auto& i : projectiles) {
+                window.draw(i.bullet);
+            }
+            // Refreshing the window
+            window.display();
         }
+        //---PAUSE MENU--
+        else {
+            window.clear(sf::Color::Black);
+            bool continue_pressed = true, exit_pressed = false;
+            sf::Text continue_button;
+            continue_button.setFont(font);
+            continue_button.setCharacterSize(40);
+            continue_button.setFillColor(sf::Color::White);
+            continue_button.setStyle(sf::Text::Bold);
+            continue_button.setString("Continue");
+            continue_button.setPosition(window.getSize().x / 2.f - 20.f, window.getSize().y / 2.f - 20.f);
+            sf::Text exit_button;
+            exit_button.setFont(font);
+            exit_button.setCharacterSize(40);
+            exit_button.setFillColor(sf::Color::White);
+            exit_button.setStyle(sf::Text::Bold);
+            exit_button.setString("Exit");
+            exit_button.setPosition(window.getSize().x / 2.f - 20.f, window.getSize().y / 2.f + 20.f);
 
-        //---Drawing---
-        window.draw(player);
-        for (const auto& i : asteroids) {
-            window.draw(i.asteroid);
+            window.draw(exit_button);
+            window.draw(continue_button);
+            window.display();
         }
-        for (const auto& i : projectiles) {
-            window.draw(i.bullet);
-        }
-        // Refreshing the window
-        window.display();
     }
 
     return 0;
