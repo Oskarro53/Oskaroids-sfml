@@ -191,7 +191,7 @@ int main(){
                 player.move(velocity); // moving player
 
                 // Checking safety of the player
-                if (safety_timer != 0) {
+                if (safety_timer != 0 || true) {
                     safety_timer--;
                     collisions = false;
                     player.setFillColor(sf::Color(0, 0, 255));
@@ -250,6 +250,7 @@ int main(){
                     }
                     else {
                         projectiles.erase(projectiles.begin() + i);
+                        i--; // <--- TU
                     }
                 }
 
@@ -291,6 +292,7 @@ int main(){
                             switch (asteroids[i].type) {
                                 case 0:
                                     asteroids.erase(asteroids.begin() + i);
+                                    i--;
                                     asteroids.push_back({Med, {f_rand(-0.4f, 0.4f), f_rand(-0.4f, 0.4f)},
                                         0.9f * player_size});
                                     asteroids[asteroids.size() - 1].type = MEDIUM;
@@ -305,6 +307,7 @@ int main(){
 
                                 case 1:
                                     asteroids.erase(asteroids.begin() + i);
+                                    i--;
                                     asteroids.push_back({Small, {f_rand(-0.4f, 0.4f), f_rand(-0.4f, 0.4f)},
                                         0.45f * player_size});
                                     asteroids[asteroids.size() - 1].type = SMALL;
@@ -315,14 +318,17 @@ int main(){
                                     asteroids[asteroids.size() - 1].type = SMALL;
                                     asteroids[asteroids.size() - 1].asteroid.setRotation(f_rand(0.f, 360.f));
                                     asteroids[asteroids.size() - 1].asteroid.setPosition(old_position);
+                                    break;
 
                                 case 2:
                                     asteroids.erase(asteroids.begin() + i);
+                                    i--;
                                     break;
 
                                 default:
                                     break;
                             }
+                            break;
                         }
                     }
 
@@ -344,7 +350,17 @@ int main(){
                     }
                 }
 
+                // Game stats
+                sf::Text Score;
+                Score.setFont(font);
+                Score.setCharacterSize(30);
+                Score.setFillColor(sf::Color::White);
+                Score.setStyle(sf::Text::Bold);
+                Score.setString("Score: " + std::to_string(score));
+                Score.setPosition(0.f, 0.f);
+
                 //---Drawing---
+                window.draw(Score);
                 window.draw(player);
                 for (const auto& i : asteroids) {
                     window.draw(i.asteroid);
@@ -352,6 +368,7 @@ int main(){
                 for (const auto& i : projectiles) {
                     window.draw(i.bullet);
                 }
+
                 // Refreshing the window
                 window.display();
             }
