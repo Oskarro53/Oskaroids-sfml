@@ -63,8 +63,9 @@ Game::Game() {
 
 void Game::run() {
     while (window.isOpen()) {
+        float dt = clock.restart().asSeconds();
         processEvents();
-        update();
+        update(dt);
         render();
     }
 }
@@ -128,8 +129,8 @@ void Game::processEvents() {
                     score = 0;
                     hp = 3;
                     paused = false;
-                    safety_timer = 900;
-                    shot_cooldown = 120;
+                    safety_timer = 3.f;
+                    shot_cooldown = 0.4f;
                     player.setPosition(window.getSize().x / 2.f, window.getSize().y / 2.f);
                     asteroids.clear();
                     projectiles.clear();
@@ -139,16 +140,16 @@ void Game::processEvents() {
     }
 }
 
-void Game::update() {
+void Game::update(float dt) {
     if (hp > 0) {
         if (!paused) {
             // ---Pressing keys---
             // Rotating the player
             if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left) && !sf::Keyboard::isKeyPressed(sf::Keyboard::Right)) {
-                player.rotate(-rotation_speed); // rotation left
+                player.rotate(-rotation_speed * dt); // rotation left
             }
             if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right) && !sf::Keyboard::isKeyPressed(sf::Keyboard::Left)) {
-                player.rotate(rotation_speed); // rotation right
+                player.rotate(rotation_speed * dt); // rotation right
             }
 
             sf::Vector2f acceleration(0.f, 0.f); // vector of acceleration
@@ -163,7 +164,7 @@ void Game::update() {
             velocity *= friction;
 
             // Shooting
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space) && shot_cooldown == 0) {
+            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space) && shot_cooldown <= 0.f) {
                 float radians = player.getRotation() * 3.14159265359f / 180.f;
                 float sx = std::cos(radians) * bullet_speed;
                 float sy = std::sin(radians) * bullet_speed;
@@ -171,7 +172,7 @@ void Game::update() {
                 projectiles[projectiles.size() - 1].bullet.setPosition(player.getPosition());
                 projectiles[projectiles.size() - 1].bullet.move(std::cos(radians) * player_size,
                                                                 std::sin(radians) * player_size);
-                shot_cooldown = 120;
+                shot_cooldown = 0.4f;
             }
 
             // Adding new asteroids
@@ -179,7 +180,7 @@ void Game::update() {
                 for (int i = 0; i < 5; i++) {
                     asteroids.push_back(
                         {
-                            Big, {f_rand(-0.4f, 0.4f), f_rand(-0.4f, 0.4f)},
+                            Big, {f_rand(-100.f, 100.f), f_rand(-100.f, 100.f)},
                             1.8f * player_size
                         });
                     asteroids[asteroids.size() - 1].asteroid.setPosition(
@@ -189,12 +190,12 @@ void Game::update() {
             }
 
             // ---Moving sprites---
-            player.move(velocity); // moving player
+            player.move(velocity * dt); // moving player
 
 
             // Checking safety of the player
-            if (safety_timer != 0) {
-                safety_timer--;
+            if (safety_timer > 0.f) {
+                safety_timer -= dt;
                 collisions = false;
                 player.setFillColor(sf::Color(0, 0, 255));
             } else {
@@ -203,8 +204,8 @@ void Game::update() {
             }
 
             // Shot cooldown
-            if (shot_cooldown != 0) {
-                shot_cooldown--;
+            if (shot_cooldown > 0.f) {
+                shot_cooldown -= dt;
             }
 
             // Reaching the map boundaries
@@ -228,7 +229,7 @@ void Game::update() {
             // Moving projectiles
             for (int i = 0; i < projectiles.size(); i++) {
                 if (projectiles[i].range != 0) {
-                    projectiles[i].bullet.move(projectiles[i].velocity);
+                    projectiles[i].bullet.move(projectiles[i].velocity * dt);
                     projectiles[i].range--;
 
                     // Reaching the map boundaries
@@ -254,13 +255,13 @@ void Game::update() {
                     }
                 } else {
                     projectiles.erase(projectiles.begin() + i);
-                    i--; // <--- TU
+                    i--;
                 }
             }
 
             // Moving asteroids
             for (int i = 0; i < asteroids.size(); i++) {
-                asteroids[i].asteroid.move(asteroids[i].velocity);
+                asteroids[i].asteroid.move(asteroids[i].velocity * dt);
                 // Reaching the map boundaries
                 if (asteroids[i].asteroid.getPosition().x > window.getSize().x + asteroids[i].size) {
                     asteroids[i].asteroid.setPosition(
@@ -299,14 +300,14 @@ void Game::update() {
                                 asteroids.erase(asteroids.begin() + i);
                                 i--;
                                 asteroids.push_back({
-                                    Med, {f_rand(-0.4f, 0.4f), f_rand(-0.4f, 0.4f)},
+                                    Med, {f_rand(-100.f, 100.f), f_rand(-100.f, 100.f)},
                                     0.9f * player_size
                                 });
                                 asteroids[asteroids.size() - 1].type = MEDIUM;
                                 asteroids[asteroids.size() - 1].asteroid.setRotation(f_rand(0.f, 360.f));
                                 asteroids[asteroids.size() - 1].asteroid.setPosition(old_position);
                                 asteroids.push_back({
-                                    Med, {f_rand(-0.4f, 0.4f), f_rand(-0.4f, 0.4f)},
+                                    Med, {f_rand(-100.f, 100.f), f_rand(-100.f, 100.f)},
                                     0.9f * player_size
                                 });
                                 asteroids[asteroids.size() - 1].type = MEDIUM;
@@ -318,14 +319,14 @@ void Game::update() {
                                 asteroids.erase(asteroids.begin() + i);
                                 i--;
                                 asteroids.push_back({
-                                    Small, {f_rand(-0.4f, 0.4f), f_rand(-0.4f, 0.4f)},
+                                    Small, {f_rand(-100.f, 100.f), f_rand(-100.f, 100.f)},
                                     0.45f * player_size
                                 });
                                 asteroids[asteroids.size() - 1].type = SMALL;
                                 asteroids[asteroids.size() - 1].asteroid.setRotation(f_rand(0.f, 360.f));
                                 asteroids[asteroids.size() - 1].asteroid.setPosition(old_position);
                                 asteroids.push_back({
-                                    Small, {f_rand(-0.4f, 0.4f), f_rand(-0.4f, 0.4f)},
+                                    Small, {f_rand(-100.f, 100.f), f_rand(-100.f, 100.f)},
                                     0.45f * player_size
                                 });
                                 asteroids[asteroids.size() - 1].type = SMALL;
@@ -358,7 +359,7 @@ void Game::update() {
                         player.setRotation(0.f);
                         velocity = {0.f, 0.f};
                         collisions = false;
-                        safety_timer = 900;
+                        safety_timer = 3.f;
                     }
                 }
             }

@@ -46,19 +46,21 @@ private:
     sf::RenderWindow window;
     unsigned int window_width = 700;
     unsigned int window_height = 700;
+    // Clock
+    sf::Clock clock;
     // Game variables
     int hp = 3;
     bool paused = false;
     bool collisions = false;
-    int safety_timer = 900;
+    float safety_timer = 3.0f;
     float bullet_size = 2.f;
-    int shot_cooldown = 120;
-    float bullet_speed = 1.f;
+    float shot_cooldown = 0.4f;
+    float bullet_speed = 300.f;
     int score = 0;
     // Player variables
-    float thrust = 0.003f; // engine power
-    float rotation_speed = 0.8f;
-    float friction = 0.998f; // "air" resistance
+    float thrust = 1.5f; // engine power
+    float rotation_speed = 120.f;
+    float friction = 0.995f; // "air" resistance
     float player_size = 20.f; // 40x40 square
     sf::Vector2f velocity;
     //Font
@@ -89,7 +91,7 @@ private:
 
     // Methods
     void processEvents();
-    void update();
+    void update(float dt);
     void render();
 
 public:
